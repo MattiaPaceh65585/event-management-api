@@ -40,3 +40,5 @@ This project was developed as part of a home assignment to demonstrate RESTful A
 ```bash
 python -m venv venv
 venv\Scripts\activate   # On Windows
+uvicorn main:app --reload
+
