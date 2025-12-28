@@ -365,3 +365,23 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
         "message": "Event poster uploaded", 
         "id": str(result.inserted_id)
     }
+
+
+# Upload Promotional Video
+@app.post("/upload_promo_video/{event_id}")
+async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
+    content = await file.read()
+
+    video_doc = {
+        "event_id": event_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "content": content,
+        "uploaded_at": datetime.utcnow()
+    }
+
+    result = await db.promo_videos.insert_one(video_doc)
+    return {
+        "message": "Promotional video uploaded",
+        "id": str(result.inserted_id)
+    }
