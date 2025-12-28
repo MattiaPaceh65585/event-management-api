@@ -54,19 +54,26 @@ class Booking(BaseModel):
 
 # Event Endpoints
 
+# Events
 # Create an event
 @app.post("/events")
 async def create_event(event: Event):
     event_doc = event.dict()
     result = await db.events.insert_one(event_doc)
-    return {"message": "Event created", "id": str(result.inserted_id)}
+
+    return {
+        "message": "Event created",
+          "id": str(result.inserted_id)
+    }
 
 # Get all events
 @app.get("/events")
 async def get_events():
     events = await db.events.find().to_list(100)
+
     for event in events:
         event["_id"] = str(event["_id"])
+
     return events
 
 # Get a single event
@@ -120,4 +127,67 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
     "uploaded_at": datetime.utcnow()
     }
     result = await db.event_posters.insert_one(poster_doc)
-    return {"message": "Event poster uploaded", "id": str(result.inserted_id)}
+    return {
+        "message": "Event poster uploaded", 
+        "id": str(result.inserted_id)
+    }
+
+# Venues
+# Create a venue
+@app.post("/venues")
+async def create_venues(venue: Venue):
+    result = await db.venues.insert_one(venue.dict())
+    
+    return {
+        "message": "Venue created",
+        "id": str(result.inserted_id)
+    }
+
+# Get all venues
+@app.get("/venues")
+async def get_venues():
+    venues = await db.venues.find().to_list(100)
+
+    for venue in venues:
+        venue["_id"] = str(venue["_id"])
+
+    return venues
+
+# Get a single venue
+@app.get("/venues/{venue_id}")
+async def get_venue(venue_id: str):
+    try:
+        venue = await db.venues.find_one({"_id": ObjectId(venue_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid venue ID")
+
+    if not venue:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    
+    venue["_id"] = str(venue["_id"])
+    return venue
+
+# Update a venue
+@app.put("/venues/{venue_id}")
+async def update_venue(venue_id: str, venue: Venue):
+    result = await db.venues.update_one(
+        {"_id": ObjectId(venue_id)},
+        {"$set": venue.dict()}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    
+    return {"message": "Venue updated"}
+
+# Delete a venue
+@app.delete("/venues/{venue_id}")
+async def delete_venue(venue_id: str):
+    result = await db.venues.delete_one(
+        {"_id": ObjectId(venue_id)}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    
+    return {"message": "Venue deleted"}
