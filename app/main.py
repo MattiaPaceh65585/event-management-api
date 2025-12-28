@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from dotenv import load_dotenv
+from bson import ObjectId
 import motor.motor_asyncio
 import io
 
@@ -52,18 +53,60 @@ class Booking(BaseModel):
     quantity: int
 
 # Event Endpoints
+
+# Create an event
 @app.post("/events")
 async def create_event(event: Event):
     event_doc = event.dict()
     result = await db.events.insert_one(event_doc)
     return {"message": "Event created", "id": str(result.inserted_id)}
 
+# Get all events
 @app.get("/events")
 async def get_events():
     events = await db.events.find().to_list(100)
     for event in events:
         event["_id"] = str(event["_id"])
     return events
+
+# Get a single event
+@app.get("/events/{event_id}")
+async def get_event(event_id: str):
+    try:
+        event = await db.events.find_one({"_id": ObjectId(event_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid event ID")
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    event["_id"] = str(event["_id"])
+    return event
+
+# Update an event
+@app.put("/events/{event_id}")
+async def update_event(event_id: str, event: Event):
+    result = await db.events.update_one(
+        {"_id": ObjectId(event_id)},
+        {"$set": event.dict()}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {"message": "Event updated"}
+
+# Delete an event
+@app.delete("/events/{event_id}")
+async def delete_event(event_id: str):
+    result = await db.events.delete_one(
+        {"_id": ObjectId(event_id)}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {"message": "Event deleted"}
 
 # Upload Event Poster (Image)
 @app.post("/upload_event_poster/{event_id}")
