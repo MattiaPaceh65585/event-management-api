@@ -62,6 +62,9 @@ async def create_event(event: Event):
     event_doc = event.dict()
     result = await db.events.insert_one(event_doc)
 
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to create event")
+
     return {
         "message": "Event created",
           "id": str(result.inserted_id)
@@ -75,6 +78,9 @@ async def get_events():
     for event in events:
         event["_id"] = str(event["_id"])
 
+    if not events:
+        raise HTTPException(status_code=404, detail="No events found")
+    
     return events
 
 # Get a single event
@@ -94,10 +100,13 @@ async def get_event(event_id: str):
 # Update an event
 @app.put("/events/{event_id}")
 async def update_event(event_id: str, event: Event):
-    result = await db.events.update_one(
-        {"_id": ObjectId(event_id)},
-        {"$set": event.dict()}
-    )
+    try:
+        result = await db.events.update_one(
+            {"_id": ObjectId(event_id)},
+            {"$set": event.dict()}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid event ID")
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -107,9 +116,12 @@ async def update_event(event_id: str, event: Event):
 # Delete an event
 @app.delete("/events/{event_id}")
 async def delete_event(event_id: str):
-    result = await db.events.delete_one(
-        {"_id": ObjectId(event_id)}
-    )
+    try:    
+        result = await db.events.delete_one(
+            {"_id": ObjectId(event_id)}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid event ID")
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -123,6 +135,9 @@ async def create_venue(venue: Venue):
     venue_doc = venue.dict()
     result = await db.venues.insert_one(venue_doc)
     
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to create venue")
+    
     return {
         "message": "Venue created",
         "id": str(result.inserted_id)
@@ -135,6 +150,9 @@ async def get_venues():
 
     for venue in venues:
         venue["_id"] = str(venue["_id"])
+
+    if not venues:
+        raise HTTPException(status_code=404, detail="No venues found")
 
     return venues
 
@@ -155,10 +173,13 @@ async def get_venue(venue_id: str):
 # Update a venue
 @app.put("/venues/{venue_id}")
 async def update_venue(venue_id: str, venue: Venue):
-    result = await db.venues.update_one(
-        {"_id": ObjectId(venue_id)},
-        {"$set": venue.dict()}
-    )
+    try:
+        result = await db.venues.update_one(
+            {"_id": ObjectId(venue_id)},
+            {"$set": venue.dict()}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid venue ID")
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Venue not found")
@@ -168,9 +189,12 @@ async def update_venue(venue_id: str, venue: Venue):
 # Delete a venue
 @app.delete("/venues/{venue_id}")
 async def delete_venue(venue_id: str):
-    result = await db.venues.delete_one(
-        {"_id": ObjectId(venue_id)}
-    )
+    try:
+        result = await db.venues.delete_one(
+            {"_id": ObjectId(venue_id)}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid venue ID")
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Venue not found")
@@ -183,6 +207,9 @@ async def delete_venue(venue_id: str):
 async def create_attendee(attendee: Attendee):
     attendee_doc = attendee.dict()
     result = await db.attendees.insert_one(attendee_doc)
+
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to create attendee")
     
     return {
         "message": "Attendee created",
@@ -197,6 +224,9 @@ async def get_attendees():
     for attendee in attendees:
         attendee["_id"] = str(attendee["_id"])
 
+    if not attendees:
+        raise HTTPException(status_code=404, detail="No attendees found")
+    
     return attendees
 
 # Get a single attendee
@@ -216,10 +246,13 @@ async def get_attendee(attendee_id: str):
 # Update an attendee
 @app.put("/attendees/{attendee_id}")
 async def update_attendee(attendee_id: str, attendee: Attendee):
-    result = await db.attendees.update_one(
-        {"_id": ObjectId(attendee_id)},
-        {"$set": attendee.dict()}
-    )
+    try:
+        result = await db.attendees.update_one(
+            {"_id": ObjectId(attendee_id)},
+            {"$set": attendee.dict()}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid attendee ID")
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Attendee not found")
@@ -229,9 +262,12 @@ async def update_attendee(attendee_id: str, attendee: Attendee):
 # Delete an attendee
 @app.delete("/attendees/{attendee_id}")
 async def delete_attendee(attendee_id: str):
-    result = await db.attendees.delete_one(
-        {"_id": ObjectId(attendee_id)}
-    )
+    try:
+        result = await db.attendees.delete_one(
+            {"_id": ObjectId(attendee_id)}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid attendee ID")
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Attendee not found")
@@ -245,6 +281,9 @@ async def create_booking(booking: Booking):
     booking_doc = booking.dict()
     result = await db.bookings.insert_one(booking_doc)
 
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to create booking")
+
     return {
         "message": "Booking created",
           "id": str(result.inserted_id)
@@ -257,6 +296,9 @@ async def get_bookings():
 
     for booking in bookings:
         booking["_id"] = str(booking["_id"])
+
+    if not bookings:
+        raise HTTPException(status_code=404, detail="No bookings found")
 
     return bookings
 
@@ -277,10 +319,13 @@ async def get_booking(booking_id: str):
 # Update a booking
 @app.put("/bookings/{booking_id}")
 async def update_booking(booking_id: str, booking: Booking):
-    result = await db.bookings.update_one(
-        {"_id": ObjectId(booking_id)},
-        {"$set": booking.dict()}
-    )
+    try:
+        result = await db.bookings.update_one(
+            {"_id": ObjectId(booking_id)},
+            {"$set": booking.dict()}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -290,9 +335,12 @@ async def update_booking(booking_id: str, booking: Booking):
 # Delete a booking
 @app.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str):
-    result = await db.bookings.delete_one(
-        {"_id": ObjectId(booking_id)}
-    )
+    try:
+        result = await db.bookings.delete_one(
+            {"_id": ObjectId(booking_id)}
+        )
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -303,6 +351,7 @@ async def delete_booking(booking_id: str):
 @app.post("/upload_event_poster/{event_id}")
 async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
     content = await file.read()
+
     poster_doc = {
     "event_id": event_id,
     "filename": file.filename,
@@ -310,6 +359,7 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
     "content": content,
     "uploaded_at": datetime.utcnow()
     }
+
     result = await db.event_posters.insert_one(poster_doc)
     return {
         "message": "Event poster uploaded", 
