@@ -135,8 +135,9 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
 # Venues
 # Create a venue
 @app.post("/venues")
-async def create_venues(venue: Venue):
-    result = await db.venues.insert_one(venue.dict())
+async def create_venue(venue: Venue):
+    venue_doc = venue.dict()
+    result = await db.venues.insert_one(venue_doc)
     
     return {
         "message": "Venue created",
@@ -191,3 +192,64 @@ async def delete_venue(venue_id: str):
         raise HTTPException(status_code=404, detail="Venue not found")
     
     return {"message": "Venue deleted"}
+
+# Attendees
+# Create an attendee
+@app.post("/attendees")
+async def create_attendee(attendee: Attendee):
+    attendee_doc = attendee.dict()
+    result = await db.attendees.insert_one(attendee_doc)
+    
+    return {
+        "message": "Attendee created",
+        "id": str(result.inserted_id)
+    }
+
+# Get all attendees
+@app.get("/attendees")
+async def get_attendees():
+    attendees = await db.attendees.find().to_list(100)
+
+    for attendee in attendees:
+        attendee["_id"] = str(attendee["_id"])
+
+    return attendees
+
+# Get a single attendee
+@app.get("/attendees/{attendee_id}")
+async def get_attendee(attendee_id: str):
+    try:
+        attendee = await db.attendees.find_one({"_id": ObjectId(attendee_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid attendee ID")
+
+    if not attendee:
+        raise HTTPException(status_code=404, detail="Attendee not found")
+    
+    attendee["_id"] = str(attendee["_id"])
+    return attendee
+
+# Update an attendee
+@app.put("/attendees/{attendee_id}")
+async def update_attendee(attendee_id: str, attendee: Attendee):
+    result = await db.attendees.update_one(
+        {"_id": ObjectId(attendee_id)},
+        {"$set": attendee.dict()}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Attendee not found")
+    
+    return {"message": "Attendee updated"}
+
+# Delete an attendee
+@app.delete("/attendees/{attendee_id}")
+async def delete_attendee(attendee_id: str):
+    result = await db.attendees.delete_one(
+        {"_id": ObjectId(attendee_id)}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Attendee not found")
+    
+    return {"message": "Attendee deleted"}
