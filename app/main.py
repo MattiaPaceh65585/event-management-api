@@ -6,6 +6,7 @@ from typing import Optional
 from datetime import datetime
 from dotenv import load_dotenv
 from bson import ObjectId
+from bson.errors import InvalidId
 import motor.motor_asyncio
 import io
 
@@ -81,7 +82,7 @@ async def get_events():
 async def get_event(event_id: str):
     try:
         event = await db.events.find_one({"_id": ObjectId(event_id)})
-    except:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid event ID")
 
     if not event:
@@ -115,23 +116,6 @@ async def delete_event(event_id: str):
     
     return {"message": "Event deleted"}
 
-# Upload Event Poster (Image)
-@app.post("/upload_event_poster/{event_id}")
-async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
-    content = await file.read()
-    poster_doc = {
-    "event_id": event_id,
-    "filename": file.filename,
-    "content_type": file.content_type,
-    "content": content,
-    "uploaded_at": datetime.utcnow()
-    }
-    result = await db.event_posters.insert_one(poster_doc)
-    return {
-        "message": "Event poster uploaded", 
-        "id": str(result.inserted_id)
-    }
-
 # Venues
 # Create a venue
 @app.post("/venues")
@@ -159,7 +143,7 @@ async def get_venues():
 async def get_venue(venue_id: str):
     try:
         venue = await db.venues.find_one({"_id": ObjectId(venue_id)})
-    except:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid venue ID")
 
     if not venue:
@@ -220,7 +204,7 @@ async def get_attendees():
 async def get_attendee(attendee_id: str):
     try:
         attendee = await db.attendees.find_one({"_id": ObjectId(attendee_id)})
-    except:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid attendee ID")
 
     if not attendee:
@@ -281,7 +265,7 @@ async def get_bookings():
 async def get_booking(booking_id: str):
     try:
         booking = await db.bookings.find_one({"_id": ObjectId(booking_id)})
-    except:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid booking ID")
 
     if not booking:
@@ -314,3 +298,20 @@ async def delete_booking(booking_id: str):
         raise HTTPException(status_code=404, detail="Booking not found")
     
     return {"message": "Booking deleted"}
+
+# Upload Event Poster (Image)
+@app.post("/upload_event_poster/{event_id}")
+async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
+    content = await file.read()
+    poster_doc = {
+    "event_id": event_id,
+    "filename": file.filename,
+    "content_type": file.content_type,
+    "content": content,
+    "uploaded_at": datetime.utcnow()
+    }
+    result = await db.event_posters.insert_one(poster_doc)
+    return {
+        "message": "Event poster uploaded", 
+        "id": str(result.inserted_id)
+    }
