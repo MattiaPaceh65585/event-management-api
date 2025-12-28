@@ -253,3 +253,64 @@ async def delete_attendee(attendee_id: str):
         raise HTTPException(status_code=404, detail="Attendee not found")
     
     return {"message": "Attendee deleted"}
+
+# Bookings
+# Create a booking
+@app.post("/bookings")
+async def create_booking(booking: Booking):
+    booking_doc = booking.dict()
+    result = await db.bookings.insert_one(booking_doc)
+
+    return {
+        "message": "Booking created",
+          "id": str(result.inserted_id)
+    }
+
+# Get all bookings
+@app.get("/bookings")
+async def get_bookings():
+    bookings = await db.bookings.find().to_list(100)
+
+    for booking in bookings:
+        booking["_id"] = str(booking["_id"])
+
+    return bookings
+
+# Get a single booking
+@app.get("/bookings/{booking_id}")
+async def get_booking(booking_id: str):
+    try:
+        booking = await db.bookings.find_one({"_id": ObjectId(booking_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking["_id"] = str(booking["_id"])
+    return booking
+
+# Update a booking
+@app.put("/bookings/{booking_id}")
+async def update_booking(booking_id: str, booking: Booking):
+    result = await db.bookings.update_one(
+        {"_id": ObjectId(booking_id)},
+        {"$set": booking.dict()}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    return {"message": "Booking updated"}
+
+# Delete a booking
+@app.delete("/bookings/{booking_id}")
+async def delete_booking(booking_id: str):
+    result = await db.bookings.delete_one(
+        {"_id": ObjectId(booking_id)}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    return {"message": "Booking deleted"}
