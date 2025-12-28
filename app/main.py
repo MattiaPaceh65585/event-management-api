@@ -67,7 +67,7 @@ async def create_event(event: Event):
 
     return {
         "message": "Event created",
-          "id": str(result.inserted_id)
+        "id": str(result.inserted_id)
     }
 
 # Get all events
@@ -77,9 +77,6 @@ async def get_events():
 
     for event in events:
         event["_id"] = str(event["_id"])
-
-    if not events:
-        raise HTTPException(status_code=404, detail="No events found")
     
     return events
 
@@ -151,9 +148,6 @@ async def get_venues():
     for venue in venues:
         venue["_id"] = str(venue["_id"])
 
-    if not venues:
-        raise HTTPException(status_code=404, detail="No venues found")
-
     return venues
 
 # Get a single venue
@@ -223,9 +217,6 @@ async def get_attendees():
 
     for attendee in attendees:
         attendee["_id"] = str(attendee["_id"])
-
-    if not attendees:
-        raise HTTPException(status_code=404, detail="No attendees found")
     
     return attendees
 
@@ -296,9 +287,6 @@ async def get_bookings():
 
     for booking in bookings:
         booking["_id"] = str(booking["_id"])
-
-    if not bookings:
-        raise HTTPException(status_code=404, detail="No bookings found")
 
     return bookings
 
@@ -381,7 +369,34 @@ async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
     }
 
     result = await db.promo_videos.insert_one(video_doc)
+
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to upload promotional video")
+
     return {
         "message": "Promotional video uploaded",
+        "id": str(result.inserted_id)
+    }
+
+# Upload Venue Photo
+@app.post("/upload_venue_photo/{venue_id}")
+async def upload_venue_photo(venue_id: str, file: UploadFile = File(...)):
+    content = await file.read()
+
+    photo_doc = {
+        "venue_id": venue_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "content": content,
+        "uploaded_at": datetime.utcnow()
+    }
+
+    result = await db.venue_photos.insert_one(photo_doc)
+
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to upload venue photo")
+    
+    return {
+        "message": "Venue photo uploaded",
         "id": str(result.inserted_id)
     }
