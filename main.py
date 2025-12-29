@@ -115,12 +115,22 @@ async def get_event(event_id: str):
 @app.put("/events/{event_id}")
 async def update_event(event_id: str, event: Event):
     try:
-        result = await db.events.update_one(
-            {"_id": ObjectId(event_id)},
-            {"$set": event.dict()}
-        )
+        event_obj_id = ObjectId(event_id)
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid event ID")
+    
+    # Validate new venue reference
+    venue_obj_id = await validate_object_id(
+        event.venue_id, db.venues, "Venue"
+    )
+
+    update_doc = event.dict()
+    update_doc["venue_id"] = str(venue_obj_id)
+
+    result = await db.events.update_one(
+        {"_id": event_obj_id},
+        {"$set": update_doc}
+    )
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -336,12 +346,26 @@ async def get_booking(booking_id: str):
 @app.put("/bookings/{booking_id}")
 async def update_booking(booking_id: str, booking: Booking):
     try:
-        result = await db.bookings.update_one(
-            {"_id": ObjectId(booking_id)},
-            {"$set": booking.dict()}
-        )
+        booking_obj_id = ObjectId(booking_id)
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid booking ID")
+    
+    # Validate new event and attendee references
+    event_obj_id = await validate_object_id(
+        booking.event_id, db.events, "Event"
+    )
+    attendee_obj_id = await validate_object_id(
+        booking.attendee_id, db.attendees, "Attendee"
+    )
+
+    update_doc = booking.dict()
+    update_doc["event_id"] = str(event_obj_id)
+    update_doc["attendee_id"] = str(attendee_obj_id)
+    
+    result = await db.bookings.update_one(
+        {"_id": booking_obj_id},
+        {"$set": update_doc}
+    )
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -371,11 +395,11 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
     content = await file.read()
 
     poster_doc = {
-    "event_id": event_id,
-    "filename": file.filename,
-    "content_type": file.content_type,
-    "content": content,
-    "uploaded_at": datetime.utcnow()
+        "event_id": event_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "content": content,
+        "uploaded_at": datetime.utcnow()
     }
 
     result = await db.event_posters.insert_one(poster_doc)
