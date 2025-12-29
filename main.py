@@ -53,13 +53,30 @@ class Booking(BaseModel):
     ticket_type: str
     quantity: int
 
-# Event Endpoints
+# Helper Methods
+async def validate_object_id(id_str: str, collection, name: str):
+    try:
+        obj_id = ObjectId(id_str)
+    except:
+        raise HTTPException(status_code=400, detail=f"Invalid {name} ID format")
+    
+    exists = await collection.find_one({"_id": obj_id})
+    if not exists:
+        raise HTTPException(status_code=400, detail=f"{name} not found")
+    
+    return obj_id
 
-# Events
+# Event Endpoints
 # Create an event
 @app.post("/events")
 async def create_event(event: Event):
+    venue_obj_id = await validate_object_id(
+        event.venue_id, db.venues, "Venue"
+    )
+
     event_doc = event.dict()
+    event_doc["venue_id"] = str(venue_obj_id)
+
     result = await db.events.insert_one(event_doc)
 
     if not result.inserted_id:
@@ -125,7 +142,7 @@ async def delete_event(event_id: str):
     
     return {"message": "Event deleted"}
 
-# Venues
+# Venues Endpoints
 # Create a venue
 @app.post("/venues")
 async def create_venue(venue: Venue):
@@ -195,7 +212,7 @@ async def delete_venue(venue_id: str):
     
     return {"message": "Venue deleted"}
 
-# Attendees
+# Attendees Endpoints
 # Create an attendee
 @app.post("/attendees")
 async def create_attendee(attendee: Attendee):
@@ -265,11 +282,22 @@ async def delete_attendee(attendee_id: str):
     
     return {"message": "Attendee deleted"}
 
-# Bookings
+# Bookings Endpoints
 # Create a booking
 @app.post("/bookings")
 async def create_booking(booking: Booking):
+    event_obj_id = await validate_object_id(
+        booking.event_id, db.events, "Event"
+    )
+
+    attendee_obj_id = await validate_object_id(
+        booking.attendee_id, db.attendees, "Attendee"
+    )
+
     booking_doc = booking.dict()
+    booking_doc["event_id"] = str(event_obj_id)
+    booking_doc["attendee_id"] = str(attendee_obj_id)
+
     result = await db.bookings.insert_one(booking_doc)
 
     if not result.inserted_id:
@@ -338,6 +366,8 @@ async def delete_booking(booking_id: str):
 # Upload Event Poster (Image)
 @app.post("/upload_event_poster/{event_id}")
 async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
+    await validate_object_id(event_id, db.events, "Event")
+
     content = await file.read()
 
     poster_doc = {
@@ -358,6 +388,8 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
 # Upload Promotional Video
 @app.post("/upload_promo_video/{event_id}")
 async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
+    await validate_object_id(event_id, db.events, "Event")
+
     content = await file.read()
 
     video_doc = {
@@ -381,6 +413,8 @@ async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
 # Upload Venue Photo
 @app.post("/upload_venue_photo/{venue_id}")
 async def upload_venue_photo(venue_id: str, file: UploadFile = File(...)):
+    await validate_object_id(venue_id, db.venues, "Venue")
+
     content = await file.read()
 
     photo_doc = {
