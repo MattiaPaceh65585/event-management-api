@@ -11,6 +11,8 @@ import motor.motor_asyncio
 import io
 
 # Load environment variables from .env file
+# This allows sensitive data such as database credentials to be kept out of the codebase
+# for security reasons.
 load_dotenv()
 
 app = FastAPI(
@@ -26,11 +28,19 @@ if not MONGO_URI:
     raise RuntimeError("MONGO_URI is not set in .env file")
 
 # Connect to MongoDB Atlas
+# Async access is used to improve scalability and prevent blocking during database operations.
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+
+# Select the database used by the application
 db = client.event_management_db
 
 # Data Models
 class Event(BaseModel):
+    """
+    Pydantic model used to validate event data received
+    from clients. Using Pydantic ensures that malformed or missing
+    fields are automatically rejected with a 422 response.
+    """
     name: str
     description: str
     date: str
@@ -38,16 +48,31 @@ class Event(BaseModel):
     max_attendees: int
 
 class Attendee(BaseModel):
+    """
+    Pydantic model used to validate attendee data received
+    from clients. Using Pydantic ensures that malformed or missing
+    fields are automatically rejected with a 422 response.
+    """
     name: str
     email: str
     phone: Optional[str] = None
 
 class Venue(BaseModel):
+    """
+    Pydantic model used to validate venue data received
+    from clients. Using Pydantic ensures that malformed or missing
+    fields are automatically rejected with a 422 response.
+    """
     name: str
     address: str
     capacity: int
 
 class Booking(BaseModel):
+    """
+    Pydantic model used to validate booking data received
+    from clients. Using Pydantic ensures that malformed or missing
+    fields are automatically rejected with a 422 response.
+    """
     event_id: str
     attendee_id: str
     ticket_type: str
@@ -55,6 +80,14 @@ class Booking(BaseModel):
 
 # Helper Methods
 async def validate_object_id(id_str: str, collection, name: str):
+    """
+    Validates that a string is a valid MongoDB ObjectId and that the referenced
+    document exists in the given collection.
+    This helper method prevents:
+    - Invalid ObjectId formats
+    - Broken references between collections
+    - Injection-style attacks using malformed IDs
+    """
     try:
         obj_id = ObjectId(id_str)
     except:
@@ -68,6 +101,8 @@ async def validate_object_id(id_str: str, collection, name: str):
 
 # Event Endpoints
 # Create an event
+# The venue_id is validated to ensure the venue exists before
+# inserting the event, maintaining referential integrity.
 @app.post("/events")
 async def create_event(event: Event):
     venue_obj_id = await validate_object_id(
@@ -88,6 +123,7 @@ async def create_event(event: Event):
     }
 
 # Get all events
+# Returns a list of all events in the database.
 @app.get("/events")
 async def get_events():
     events = await db.events.find().to_list(100)
@@ -98,6 +134,7 @@ async def get_events():
     return events
 
 # Get a single event
+# Retrieves a specific event by its ID.
 @app.get("/events/{event_id}")
 async def get_event(event_id: str):
     try:
@@ -111,7 +148,9 @@ async def get_event(event_id: str):
     event["_id"] = str(event["_id"])
     return event
 
-# Update an event
+# Update an existing event.
+# The venue reference is revalidated to prevent updating the event
+# with a non-existent venue ID.
 @app.put("/events/{event_id}")
 async def update_event(event_id: str, event: Event):
     try:
@@ -138,6 +177,7 @@ async def update_event(event_id: str, event: Event):
     return {"message": "Event updated"}
 
 # Delete an event
+# Deletes an event by its ID.
 @app.delete("/events/{event_id}")
 async def delete_event(event_id: str):
     try:    
@@ -153,7 +193,7 @@ async def delete_event(event_id: str):
     return {"message": "Event deleted"}
 
 # Venues Endpoints
-# Create a venue
+# Creates a new venue in the database.
 @app.post("/venues")
 async def create_venue(venue: Venue):
     venue_doc = venue.dict()
@@ -168,6 +208,7 @@ async def create_venue(venue: Venue):
     }
 
 # Get all venues
+# Returns a list of all venues in the database.
 @app.get("/venues")
 async def get_venues():
     venues = await db.venues.find().to_list(100)
@@ -178,6 +219,7 @@ async def get_venues():
     return venues
 
 # Get a single venue
+# Retrieves a specific venue by its ID.
 @app.get("/venues/{venue_id}")
 async def get_venue(venue_id: str):
     try:
@@ -192,6 +234,7 @@ async def get_venue(venue_id: str):
     return venue
 
 # Update a venue
+# Updates an existing venue by its ID.
 @app.put("/venues/{venue_id}")
 async def update_venue(venue_id: str, venue: Venue):
     try:
@@ -208,6 +251,7 @@ async def update_venue(venue_id: str, venue: Venue):
     return {"message": "Venue updated"}
 
 # Delete a venue
+# Deletes a venue by its ID.
 @app.delete("/venues/{venue_id}")
 async def delete_venue(venue_id: str):
     try:
@@ -224,6 +268,7 @@ async def delete_venue(venue_id: str):
 
 # Attendees Endpoints
 # Create an attendee
+# Creates a new attendee in the database.
 @app.post("/attendees")
 async def create_attendee(attendee: Attendee):
     attendee_doc = attendee.dict()
@@ -238,6 +283,7 @@ async def create_attendee(attendee: Attendee):
     }
 
 # Get all attendees
+# Returns a list of all attendees in the database.
 @app.get("/attendees")
 async def get_attendees():
     attendees = await db.attendees.find().to_list(100)
@@ -248,6 +294,7 @@ async def get_attendees():
     return attendees
 
 # Get a single attendee
+# Retrieves a specific attendee by its ID.
 @app.get("/attendees/{attendee_id}")
 async def get_attendee(attendee_id: str):
     try:
@@ -262,6 +309,7 @@ async def get_attendee(attendee_id: str):
     return attendee
 
 # Update an attendee
+# Updates an existing attendee by its ID.
 @app.put("/attendees/{attendee_id}")
 async def update_attendee(attendee_id: str, attendee: Attendee):
     try:
@@ -278,6 +326,7 @@ async def update_attendee(attendee_id: str, attendee: Attendee):
     return {"message": "Attendee updated"}
 
 # Delete an attendee
+# Deletes an attendee by its ID.
 @app.delete("/attendees/{attendee_id}")
 async def delete_attendee(attendee_id: str):
     try:
@@ -294,6 +343,8 @@ async def delete_attendee(attendee_id: str):
 
 # Bookings Endpoints
 # Create a booking
+# The event_id and attendee_id are validated to ensure they exist before
+# inserting the booking, maintaining referential integrity.
 @app.post("/bookings")
 async def create_booking(booking: Booking):
     event_obj_id = await validate_object_id(
@@ -319,6 +370,7 @@ async def create_booking(booking: Booking):
     }
 
 # Get all bookings
+# Returns a list of all bookings in the database.
 @app.get("/bookings")
 async def get_bookings():
     bookings = await db.bookings.find().to_list(100)
@@ -329,6 +381,7 @@ async def get_bookings():
     return bookings
 
 # Get a single booking
+# Retrieves a specific booking by its ID.
 @app.get("/bookings/{booking_id}")
 async def get_booking(booking_id: str):
     try:
@@ -343,6 +396,7 @@ async def get_booking(booking_id: str):
     return booking
 
 # Update a booking
+# Updates an existing booking by its ID.
 @app.put("/bookings/{booking_id}")
 async def update_booking(booking_id: str, booking: Booking):
     try:
@@ -373,6 +427,7 @@ async def update_booking(booking_id: str, booking: Booking):
     return {"message": "Booking updated"}
 
 # Delete a booking
+# Deletes a booking by its ID.
 @app.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str):
     try:
@@ -388,6 +443,9 @@ async def delete_booking(booking_id: str):
     return {"message": "Booking deleted"}
 
 # Upload Event Poster (Image)
+# Files are stored directly in MongoDB as binary data.
+# This approach simplifies retrieval for small media files
+# and avoids dependency on external storage services.
 @app.post("/upload_event_poster/{event_id}")
 async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
     await validate_object_id(event_id, db.events, "Event")
@@ -410,6 +468,9 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
 
 
 # Upload Promotional Video
+# Files are stored directly in MongoDB as binary data.
+# This approach simplifies retrieval for small media files
+# and avoids dependency on external storage services.
 @app.post("/upload_promo_video/{event_id}")
 async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
     await validate_object_id(event_id, db.events, "Event")
@@ -435,6 +496,9 @@ async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
     }
 
 # Upload Venue Photo
+# Files are stored directly in MongoDB as binary data.
+# This approach simplifies retrieval for small media files
+# and avoids dependency on external storage services.
 @app.post("/upload_venue_photo/{venue_id}")
 async def upload_venue_photo(venue_id: str, file: UploadFile = File(...)):
     await validate_object_id(venue_id, db.venues, "Venue")
