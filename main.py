@@ -88,13 +88,14 @@ async def validate_object_id(id_str: str, collection, name: str):
     - Broken references between collections
     - Injection-style attacks using malformed IDs
     """
-    try:
-        obj_id = ObjectId(id_str)
-    except:
-        raise HTTPException(status_code=400, detail=f"Invalid {name} ID format")
+    
+    if not ObjectId.is_valid(id_str):
+        raise HTTPException(status_code=400, detail=f"Invalid {name} ID")
+
+    obj_id = ObjectId(id_str)
     
     exists = await collection.find_one({"_id": obj_id})
-    if not exists:
+    if exists is None:
         raise HTTPException(status_code=400, detail=f"{name} not found")
     
     return obj_id
