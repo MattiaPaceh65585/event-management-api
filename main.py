@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from dotenv import load_dotenv
@@ -45,7 +45,7 @@ class Event(BaseModel):
     description: str
     date: str
     venue_id: str
-    max_attendees: int
+    max_attendees: int = Field(..., gt=0)
 
 class Attendee(BaseModel):
     """
@@ -65,7 +65,7 @@ class Venue(BaseModel):
     """
     name: str
     address: str
-    capacity: int
+    capacity: int = Field(..., gt=0)
 
 class Booking(BaseModel):
     """
@@ -76,7 +76,7 @@ class Booking(BaseModel):
     event_id: str
     attendee_id: str
     ticket_type: str
-    quantity: int
+    quantity: int = Field(..., gt=0)
 
 # Helper Methods
 async def validate_object_id(id_str: str, collection, name: str):
@@ -461,6 +461,10 @@ async def upload_event_poster(event_id: str, file: UploadFile = File(...)):
         "uploaded_at": datetime.utcnow()
     }
 
+    # Ensure the uploaded file is an image
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not an image")
+
     result = await db.event_posters.insert_one(poster_doc)
     return {
         "message": "Event poster uploaded", 
@@ -485,6 +489,10 @@ async def upload_promo_video(event_id: str, file: UploadFile = File(...)):
         "content": content,
         "uploaded_at": datetime.utcnow()
     }
+
+    # Ensure the uploaded file is a vide
+    if not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a video")
 
     result = await db.promo_videos.insert_one(video_doc)
 
@@ -513,6 +521,10 @@ async def upload_venue_photo(venue_id: str, file: UploadFile = File(...)):
         "content": content,
         "uploaded_at": datetime.utcnow()
     }
+
+    # Ensure the uploaded file is an image
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not an image")
 
     result = await db.venue_photos.insert_one(photo_doc)
 
